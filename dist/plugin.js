@@ -1,7 +1,8 @@
-exports.version = 0.11
+exports.version = 0.2
 exports.apiRequired = 3 // defaultValue
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
+exports.frontend_js = 'main.js'
 
 exports.config = {
     hours: { type: 'number', min: 0.1, step: 0.1, defaultValue: 24 },
@@ -31,28 +32,32 @@ exports.init = async api => {
     return {
         unload: () => save.flush(), // we may have pending savings
         middleware: ctx => () => { // callback = execute after other middlewares are done
-            const u = getCurrentUsername(ctx)
-            if (!u) return // only with accounts
-            if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
-            if (!(ctx.vfsNode || ctx.state.archive)) return // not a download
+            const u = getCurrentUsername(ctx) || undefined
             const expiration = api.getConfig('hours') * 3600_000
             const quota = api.getConfig('megabytes') * 1024 * 1024
-            const size = ctx.state.length ?? ctx.length
             const now = Date.now()
             const brandNewAccount = { b: 0, started: now }
-            const account = (perAccount[u] ||= brandNewAccount)
-            const expires = account.started + expiration
+            const account = u && (perAccount[u] ||= brandNewAccount)
+            const expires = account?.started + expiration
             if (expires <= now)
                 Object.assign(account, brandNewAccount)
-            const wouldBe = account.b + size
-            if (wouldBe > quota) {
-                ctx.status = 429
+            const left = quota - account?.b
+            if (ctx.path === api.Const.API_URI + 'plugin_download_quota') {
+                ctx.status = 200
+                return ctx.body = u ? JSON.stringify(formatBytes(left)) : ''
+            }
+            if (!account) return // only with accounts
+            if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
+            if (!(ctx.vfsNode || ctx.state.archive)) return // not a download
+            const size = ctx.state.length ?? ctx.length
+            if (left < size) {
+                ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
                 ctx.type = 'text'
                 ctx.set('content-disposition', '')
-                ctx.body = `Cannot download file because only ${formatBytes(quota - account.b)} of your quota is left. It will reset on ${formatTimestamp(expires)}.`
+                ctx.body = `Cannot download file because only ${formatBytes(left)} of your quota is left. It will reset on ${formatTimestamp(expires)}`
                 return
             }
-            account.b = wouldBe
+            account.b += size
             save()
         }
     }
