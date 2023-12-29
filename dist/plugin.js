@@ -1,4 +1,4 @@
-exports.version = 0.1
+exports.version = 0.11
 exports.apiRequired = 3 // defaultValue
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
@@ -7,7 +7,6 @@ exports.config = {
     hours: { type: 'number', min: 0.1, step: 0.1, defaultValue: 24 },
     megabytes: { type: 'number', min: 1, defaultValue: 1000, helpertext: "This quota is applied per-account. Anonymous users are not restricted." },
 }
-
 
 exports.init = async api => {
     const { debounceAsync, formatBytes, formatTimestamp } = api.require('./misc')
@@ -50,7 +49,7 @@ exports.init = async api => {
                 ctx.status = 429
                 ctx.type = 'text'
                 ctx.set('content-disposition', '')
-                ctx.body = `You have reached your ${formatBytes(quota)} quota, that will reset on ${formatTimestamp(expires)}`
+                ctx.body = `Cannot download file because only ${formatBytes(quota - account.b)} of your quota is left. It will reset on ${formatTimestamp(expires)}.`
                 return
             }
             account.b = wouldBe
