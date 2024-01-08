@@ -1,4 +1,4 @@
-exports.version = 0.2
+exports.version = 0.22
 exports.apiRequired = 3 // defaultValue
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
@@ -49,7 +49,7 @@ exports.init = async api => {
             if (!account) return // only with accounts
             if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
             if (!(ctx.vfsNode || ctx.state.archive)) return // not a download
-            const size = ctx.state.length ?? ctx.length
+            const size = ctx.length
             if (left < size) {
                 ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
                 ctx.type = 'text'
@@ -59,6 +59,14 @@ exports.init = async api => {
             }
             account.b += size
             save()
+            const ofs = ctx.socket.bytesWritten
+            ctx.socket.on('close', () => {
+                const actual = ctx.socket.bytesWritten - ofs
+                const diff = size - actual
+                if (diff <= 0) return
+                account.b -= diff
+                save()
+            })
         }
     }
 }
