@@ -1,4 +1,4 @@
-exports.version = 0.23
+exports.version = 1
 exports.apiRequired = 3 // defaultValue
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
@@ -6,10 +6,10 @@ exports.frontend_js = 'main.js'
 
 exports.config = {
     hours: { type: 'number', min: 0.1, step: 0.1, defaultValue: 24 },
-    megabytes: { type: 'number', min: 1, defaultValue: 1000, helpertext: "This quota is applied per-account. Anonymous users are not restricted." },
+    megabytes: { type: 'number', min: 1, defaultValue: 1000, helperText: "This quota is applied per-account. Anonymous users are not restricted." },
 }
 
-const PREFIX = 'dlQuota.'
+const PREFIX = 'dlQuota_'
 
 exports.init = async api => {
     const { debounceAsync, formatBytes, formatTimestamp } = api.require('./misc')
@@ -44,9 +44,9 @@ exports.init = async api => {
             if (expires <= now)
                 Object.assign(account, brandNewAccount)
             const left = quota - account?.b
-            if (ctx.path === api.Const.API_URI + 'plugin_download_quota') {
+            if (ctx.path === api.Const.API_URI + PREFIX + 'status') {
                 ctx.status = 200
-                return ctx.body = u ? JSON.stringify(formatBytes(left)) : ''
+                return ctx.body = u ? JSON.stringify({ left }) : ''
             }
             if (!account) return // only with accounts
             if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
