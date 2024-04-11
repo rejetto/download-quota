@@ -1,12 +1,18 @@
-exports.version = 1
+exports.version = 2
 exports.apiRequired = 3 // defaultValue
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
 
 exports.config = {
-    hours: { type: 'number', min: 0.1, step: 0.1, defaultValue: 24 },
-    megabytes: { type: 'number', min: 1, defaultValue: 1000, helperText: "This quota is applied per-account. Anonymous users are not restricted." },
+    hours: { type: 'number', min: 0.1, step: 0.1, defaultValue: 24, sm: 6, },
+    megabytes: { type: 'number', min: 1, defaultValue: 1000, sm: 6, helperText: "Default quota applied per-account. Anonymous users are not restricted." },
+    perAccount: { type: 'array', fields: { username: { type: 'username' }, megabytes: { type: 'number', min: 1, defaultValue: 1000 } },
+        label: "Decide quota on specific accounts"
+    },
+}
+exports.configDialog = {
+    sx: { maxWidth: '30em' },
 }
 
 const PREFIX = 'dlQuota_'
@@ -16,6 +22,7 @@ exports.init = async api => {
     const { getCurrentUsername } = api.require('./auth')
     const { join } = api.require('path')
     const { writeFile, readFile } = api.require('fs/promises')
+    const _ = api.require('lodash')
     const perAccountFile = join(api.storageDir, 'per-account.json')
     let perAccount = {}
 
@@ -36,7 +43,7 @@ exports.init = async api => {
         middleware: ctx => () => { // callback = execute after other middlewares are done
             const u = getCurrentUsername(ctx) || undefined
             const expiration = api.getConfig('hours') * 3600_000
-            const quota = api.getConfig('megabytes') * 1024 * 1024
+            const quota = (u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes || api.getConfig('megabytes')) * 1024 * 1024
             const now = Date.now()
             const brandNewAccount = { b: 0, started: now }
             const account = u && (perAccount[u] ||= brandNewAccount)
