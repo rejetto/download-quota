@@ -1,5 +1,5 @@
-exports.version = 2
-exports.apiRequired = 3 // defaultValue
+exports.version = 2.1
+exports.apiRequired = 8.65 // vfsNode in ctx.state
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
@@ -43,7 +43,7 @@ exports.init = async api => {
         middleware: ctx => () => { // callback = execute after other middlewares are done
             const u = getCurrentUsername(ctx) || undefined
             const expiration = api.getConfig('hours') * 3600_000
-            const quota = (u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes || api.getConfig('megabytes')) * 1024 * 1024
+            const quota = 1024 * 1024 * ((u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes) ?? api.getConfig('megabytes'))
             const now = Date.now()
             const brandNewAccount = { b: 0, started: now }
             const account = u && (perAccount[u] ||= brandNewAccount)
@@ -57,7 +57,7 @@ exports.init = async api => {
             }
             if (!account) return // only with accounts
             if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
-            if (!(ctx.vfsNode || ctx.state.archive)) return // not a download
+            if (!(ctx.state.vfsNode || ctx.state.archive)) return // not a download
             const size = ctx.length
             if (left < size) {
                 ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
