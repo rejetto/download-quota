@@ -1,5 +1,5 @@
-exports.version = 2.14
-exports.apiRequired = 8.65 // vfsNode in ctx.state
+exports.version = 2.15
+exports.apiRequired = 8.9 // new debounceAsync api
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
@@ -36,7 +36,7 @@ exports.init = async api => {
     }
 
     const save = debounceAsync(() => writeFile(perAccountFile, JSON.stringify(perAccount)),
-        2_000, { maxWait: 30_000 })
+        { wait: 2_000, maxWait: 30_000 })
 
     return {
         unload: () => save.flush(), // we may have pending savings
