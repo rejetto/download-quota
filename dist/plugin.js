@@ -1,4 +1,4 @@
-exports.version = 2.1
+exports.version = 2.14
 exports.apiRequired = 8.65 // vfsNode in ctx.state
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
@@ -63,8 +63,7 @@ exports.init = async api => {
                 ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
                 ctx.type = 'text'
                 ctx.set('content-disposition', '')
-                ctx.body = t(PREFIX + 'exceeded', { left: formatBytes(left), expires: formatTimestamp(expires) },
-                    "Cannot download file because only {left} of your quota is left. It will reset on {expires}")
+                ctx.body = `Cannot download file because only ${formatBytes(left)} of your quota is left. It will reset on ${formatTimestamp(expires)}`
                 return
             }
             account.b += size
