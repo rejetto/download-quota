@@ -1,0 +1,5 @@
+{
+    "translate": {
+        "downloadQuota_insufficient_quota": "Non puoi scaricare questo file perché supera il tuo limite. Puoi riprovare dopo il {expires}, ma per ora ti sono rimasti {left}."
+    }
+}

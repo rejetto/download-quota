@@ -1,5 +1,5 @@
-exports.version = 2.15
-exports.apiRequired = 8.9 // new debounceAsync api
+exports.version = 2.2
+exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
@@ -40,7 +40,7 @@ exports.init = async api => {
 
     return {
         unload: () => save.flush(), // we may have pending savings
-        middleware: ctx => () => { // callback = execute after other middlewares are done
+        middleware: ctx => async () => { // callback = execute after other middlewares are done
             const u = getCurrentUsername(ctx) || undefined
             const expiration = api.getConfig('hours') * 3600_000
             const quota = 1024 * 1024 * ((u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes) ?? api.getConfig('megabytes'))
@@ -63,7 +63,9 @@ exports.init = async api => {
                 ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
                 ctx.type = 'text'
                 ctx.set('content-disposition', '')
-                ctx.body = `Cannot download file because only ${formatBytes(left)} of your quota is left. It will reset on ${formatTimestamp(expires)}`
+                const { t } = await api.i18n(ctx)
+                ctx.body = t('downloadQuota_insufficient_quota', { left: formatBytes(left), expires: formatTimestamp(expires) },
+                    "Cannot download file because only {left} of your quota is left. It will reset on {expires}")
                 return
             }
             account.b += size
