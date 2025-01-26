@@ -1,0 +1,5 @@
+{
+    "translate": {
+        "downloadQuota_insufficient_quota": "Et voi ladata tiedostoa koska vain {left} quota on jäljellä. Se nollautuu {expires}"
+    }
+}
