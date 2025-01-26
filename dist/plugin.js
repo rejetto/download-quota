@@ -1,4 +1,4 @@
-exports.version = 2.2
+exports.version = 2.21
 exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
