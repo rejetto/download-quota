@@ -1,8 +1,16 @@
-exports.version = 2.2
+exports.version = 2.21
 exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
+exports.changelog = [
+    { "version": 2.21, "message": "Finnish translation" },
+    { "version": 2.2, "message": "Now the error message can be translated" },
+    { "version": 2.15, "message": "Compatibility with new HFS version" },
+    { "version": 2.14, "message": "Error fixed" },
+    { "version": 2.1, "message": "Compatibility with new HFS version" },
+    { "version": 2, "message": "Decide quota on specific accounts" }
+]
 
 exports.config = {
     hours: { type: 'number', min: 0.1, step: 0.1, defaultValue: 24, sm: 6, },
