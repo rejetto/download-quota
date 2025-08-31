@@ -1,9 +1,10 @@
-exports.version = 2.22
+exports.version = 2.23
 exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
 exports.changelog = [
+    { "version": 2.23, "message": "Fix: wrong counting in some cases" },
     { "version": 2.22, "message": "Optimization" },
     { "version": 2.21, "message": "Finnish translation" },
     { "version": 2.2, "message": "Now the error message can be translated" },
@@ -30,6 +31,7 @@ exports.init = async api => {
     const { debounceAsync, formatBytes, formatTimestamp } = api.require('./misc')
     const { getCurrentUsername } = api.require('./auth')
     const { join } = api.require('path')
+    const { Readable } = api.require('stream')
     const { writeFile, readFile } = api.require('fs/promises')
     const _ = api.require('lodash')
     const perAccountFile = join(api.storageDir, 'per-account.json')
@@ -56,7 +58,7 @@ exports.init = async api => {
             const expiration = api.getConfig('hours') * 3600_000
             const quota = 1024 * 1024 * ((u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes) ?? api.getConfig('megabytes'))
             const now = Date.now()
-            const brandNewAccount = { b: 0, started: now }
+            const brandNewAccount = { b: 0, started: now } // b is for "used bytes"
             const account = u && (perAccount[u] ||= brandNewAccount)
             const expires = account?.started + expiration
             if (expires <= now)
@@ -77,16 +79,24 @@ exports.init = async api => {
                     "Cannot download file because only {left} of your quota is left. It will reset on {expires}")
                 return
             }
-            account.b += size
+            account.b += size // immediately count all of it
             save()
-            const ofs = ctx.socket.bytesWritten
-            ctx.socket.on('close', () => {
-                const actual = ctx.socket.bytesWritten - ofs
+            const { body } = ctx
+            if (!(body instanceof Readable)) return
+            // try to give back quota if the download is interrupted
+            // in past versions we were using ctx.socket.bytesWritten, but the socket can be reused in multiple requests
+            let actual = 0
+            body.on('data', chunk => actual += chunk.length)
+            body.on('error', giveBack)
+            body.on('close', giveBack)
+
+            function giveBack() {
                 const diff = size - actual
                 if (diff <= 0) return
-                account.b -= diff
+                actual = size // avoid further changes
+                account.b -= diff // give back the difference
                 save()
-            })
+            }
         }
     }
 }
