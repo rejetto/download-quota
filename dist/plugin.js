@@ -1,9 +1,10 @@
-exports.version = 2.21
+exports.version = 2.22
 exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
 exports.changelog = [
+    { "version": 2.22, "message": "Optimization" },
     { "version": 2.21, "message": "Finnish translation" },
     { "version": 2.2, "message": "Now the error message can be translated" },
     { "version": 2.15, "message": "Compatibility with new HFS version" },
@@ -49,6 +50,8 @@ exports.init = async api => {
     return {
         unload: () => save.flush(), // we may have pending savings
         middleware: ctx => async () => { // callback = execute after other middlewares are done
+            if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
+            if (!(ctx.state.vfsNode || ctx.state.archive)) return // not a download
             const u = getCurrentUsername(ctx) || undefined
             const expiration = api.getConfig('hours') * 3600_000
             const quota = 1024 * 1024 * ((u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes) ?? api.getConfig('megabytes'))
@@ -64,8 +67,6 @@ exports.init = async api => {
                 return ctx.body = u ? JSON.stringify({ left }) : ''
             }
             if (!account) return // only with accounts
-            if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
-            if (!(ctx.state.vfsNode || ctx.state.archive)) return // not a download
             const size = ctx.length
             if (left < size) {
                 ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
