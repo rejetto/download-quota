@@ -1,9 +1,10 @@
-exports.version = 2.23
+exports.version = 2.24
 exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
 exports.changelog = [
+    { "version": 2.24, "message": "Fix: quota not displayed" },
     { "version": 2.23, "message": "Fix: wrong counting in some cases" },
     { "version": 2.22, "message": "Optimization" },
     { "version": 2.21, "message": "Finnish translation" },
@@ -52,8 +53,11 @@ exports.init = async api => {
     return {
         unload: () => save.flush(), // we may have pending savings
         middleware: ctx => async () => { // callback = execute after other middlewares are done
-            if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
-            if (!(ctx.state.vfsNode || ctx.state.archive)) return // not a download
+            const reqStatus = ctx.path === api.Const.API_URI + PREFIX + 'status'
+            if (!reqStatus) {
+                if (ctx.status >= 300 || ctx.state.download_counter_ignore || ctx.state.considerAsGui) return
+                if (!(ctx.state.vfsNode || ctx.state.archive)) return // not a download
+            }
             const u = getCurrentUsername(ctx) || undefined
             const expiration = api.getConfig('hours') * 3600_000
             const quota = 1024 * 1024 * ((u && _.find(api.getConfig('perAccount'), { username: u })?.megabytes) ?? api.getConfig('megabytes'))
@@ -64,7 +68,7 @@ exports.init = async api => {
             if (expires <= now)
                 Object.assign(account, brandNewAccount)
             const left = quota - account?.b
-            if (ctx.path === api.Const.API_URI + PREFIX + 'status') {
+            if (reqStatus) {
                 ctx.status = 200
                 return ctx.body = u ? JSON.stringify({ left }) : ''
             }
