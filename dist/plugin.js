@@ -1,9 +1,10 @@
-exports.version = 2.24
+exports.version = 2.25
 exports.apiRequired = 10.2 // api.i18n
 exports.repo = "rejetto/download-quota"
 exports.description = "Download quota, per-account"
 exports.frontend_js = 'main.js'
 exports.changelog = [
+    { "version": 2.25, "message": "ZIP downloads whose size cannot be calculated now count toward the quota correctly" },
     { "version": 2.24, "message": "Fix: quota not displayed" },
     { "version": 2.23, "message": "Fix: wrong counting in some cases" },
     { "version": 2.22, "message": "Optimization" },
@@ -73,8 +74,9 @@ exports.init = async api => {
                 return ctx.body = u ? JSON.stringify({ left }) : ''
             }
             if (!account) return // only with accounts
+            const { body } = ctx
             const size = ctx.length
-            if (left < size) {
+            if (left <= 0 || Number.isFinite(size) && left < size) {
                 ctx.status = api.Const.HTTP_TOO_MANY_REQUESTS
                 ctx.type = 'text'
                 ctx.set('content-disposition', '')
@@ -83,9 +85,21 @@ exports.init = async api => {
                     "Cannot download file because only {left} of your quota is left. It will reset on {expires}")
                 return
             }
+            if (!Number.isFinite(size)) {
+                if (!(body instanceof Readable)) return
+                // unknown ZIP sizes can only be enforced while streaming
+                body.on('data', chunk => {
+                    account.b += chunk.length
+                    save()
+                    if (account.b >= quota) {
+                        body.pause()
+                        body.destroy()
+                    }
+                })
+                return
+            }
             account.b += size // immediately count all of it
             save()
-            const { body } = ctx
             if (!(body instanceof Readable)) return
             // try to give back quota if the download is interrupted
             // in past versions we were using ctx.socket.bytesWritten, but the socket can be reused in multiple requests
